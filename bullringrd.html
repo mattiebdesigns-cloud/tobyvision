@@ -161,6 +161,8 @@
   <label class="toggle-label"><input type="checkbox" id="tog-dams" checked/> Dams</label>
   <label class="toggle-label"><input type="checkbox" id="tog-route" checked/> Route</label>
   <label class="toggle-label"><input type="checkbox" id="tog-nhd"/> NHD</label>
+  <label class="toggle-label"><input type="checkbox" id="tog-nwi"/> NWI</label>
+  <label class="toggle-label"><input type="checkbox" id="tog-megis"/> MEGIS</label>
   <button class="hdr-btn" id="btn-settings">⚙ Settings</button>
 </div>
 
@@ -193,7 +195,9 @@
   <div class="lg-item"><div class="lg-line" style="background:#8fbc5a;height:1.5px;border-top:1.5px dashed #8fbc5a;background:transparent"></div><span>Cultivation parallels</span></div>
   <div class="lg-item"><div class="lg-dot" style="background:#ff9800;transform:rotate(45deg);border-radius:2px"></div><span>Keypoint (valley inflection)</span></div>
   <div class="lg-item"><div class="lg-line" style="background:#5a9db7;height:1.5px"></div><span>Computed streams</span></div>
-  <div class="lg-item"><div class="lg-line" style="background:#1565c0;height:2px"></div><span>NHD mapped streams (USGS)</span></div>
+  <div class="lg-item"><div class="lg-line" style="background:#1565c0;height:2px"></div><span>NHD streams (USGS)</span></div>
+  <div class="lg-item"><div class="lg-fill" style="background:rgba(100,180,100,.35);border-color:#2e7d32"></div><span>NWI wetlands (USFWS)</span></div>
+  <div class="lg-item"><div class="lg-line" style="background:#0277bd;height:2px;border-top:1px dashed #0277bd;background:transparent"></div><span>MEGIS hydro (Maine GIS)</span></div>
   <div class="lg-item"><div class="lg-dot" style="background:#f1c40f"></div><span>Dam site #1 (top score)</span></div>
   <div class="lg-item"><div class="lg-dot" style="background:#8bc34a"></div><span>Dam sites #2–3</span></div>
   <div class="lg-item"><div class="lg-dot" style="background:#4a9db7"></div><span>Dam sites #4–7</span></div>
@@ -791,6 +795,38 @@ document.getElementById('tog-nhd').addEventListener('change',e=>{
   } else {
     map.removeLayer(nhdFlowlines); map.removeLayer(nhdWaterbodies);
   }
+});
+
+// ── NWI (National Wetlands Inventory) WMS ────────────────────────
+// USFWS wetland polygons — patches often align directly with swale zones
+const nwi = L.tileLayer.wms(
+  'https://fwspublicservices.wim.usgs.gov/wetlandsmapperservices/services/Wetlands/MapServer/WMSServer',
+  { layers:'1', format:'image/png', transparent:true, opacity:.7,
+    attribution:'USFWS NWI', maxZoom:19 }
+);
+document.getElementById('tog-nwi').addEventListener('change',e=>{
+  if(e.target.checked){
+    nwi.addTo(map);
+    nwi.once('tileerror',()=>{ showInfo('NWI tiles unavailable at this zoom — try zooming in'); setTimeout(hideInfo,4000); });
+    showInfo('NWI: USFWS wetland polygons — do they match your swale zones?');
+    setTimeout(hideInfo,4000);
+  } else { map.removeLayer(nwi); }
+});
+
+// ── MEGIS Hydrography (Maine-specific) WMS ───────────────────────
+// Maine Office of GIS detailed stream layer — finer than NHD for ME
+const megisHydro = L.tileLayer.wms(
+  'https://gis.maine.gov/arcgis/services/Hydrography/Maine_Hydrography/MapServer/WMSServer',
+  { layers:'0,1,2', format:'image/png', transparent:true, opacity:.8,
+    attribution:'Maine MEGIS', maxZoom:19 }
+);
+document.getElementById('tog-megis').addEventListener('change',e=>{
+  if(e.target.checked){
+    megisHydro.addTo(map);
+    megisHydro.once('tileerror',()=>{ showInfo('MEGIS service unavailable — check gis.maine.gov'); setTimeout(hideInfo,5000); });
+    showInfo('MEGIS: Maine detailed hydrography — finer resolution than NHD');
+    setTimeout(hideInfo,4000);
+  } else { map.removeLayer(megisHydro); }
 });
 
 // ── Draw ─────────────────────────────────────────────────────────
