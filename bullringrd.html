@@ -162,7 +162,7 @@
   <label class="toggle-label"><input type="checkbox" id="tog-route" checked/> Route</label>
   <label class="toggle-label"><input type="checkbox" id="tog-nhd"/> NHD</label>
   <label class="toggle-label"><input type="checkbox" id="tog-nwi"/> NWI</label>
-  <label class="toggle-label"><input type="checkbox" id="tog-megis"/> MEGIS</label>
+  <label class="toggle-label"><input type="checkbox" id="tog-megis"/> NHD+HR</label>
   <button class="hdr-btn" id="btn-settings">⚙ Settings</button>
 </div>
 
@@ -197,7 +197,7 @@
   <div class="lg-item"><div class="lg-line" style="background:#5a9db7;height:1.5px"></div><span>Computed streams</span></div>
   <div class="lg-item"><div class="lg-line" style="background:#1565c0;height:2px"></div><span>NHD streams (USGS)</span></div>
   <div class="lg-item"><div class="lg-fill" style="background:rgba(100,180,100,.35);border-color:#2e7d32"></div><span>NWI wetlands (USFWS)</span></div>
-  <div class="lg-item"><div class="lg-line" style="background:#0277bd;height:2px;border-top:1px dashed #0277bd;background:transparent"></div><span>MEGIS hydro (Maine GIS)</span></div>
+  <div class="lg-item"><div class="lg-line" style="background:#0277bd;height:2px"></div><span>NHDPlus HR streams (USGS hi-res)</span></div>
   <div class="lg-item"><div class="lg-dot" style="background:#f1c40f"></div><span>Dam site #1 (top score)</span></div>
   <div class="lg-item"><div class="lg-dot" style="background:#8bc34a"></div><span>Dam sites #2–3</span></div>
   <div class="lg-item"><div class="lg-dot" style="background:#4a9db7"></div><span>Dam sites #4–7</span></div>
@@ -813,20 +813,22 @@ document.getElementById('tog-nwi').addEventListener('change',e=>{
   } else { map.removeLayer(nwi); }
 });
 
-// ── MEGIS Hydrography (Maine-specific) WMS ───────────────────────
-// Maine Office of GIS detailed stream layer — finer than NHD for ME
-const megisHydro = L.tileLayer.wms(
-  'https://gis.maine.gov/arcgis/services/Hydrography/Maine_Hydrography/MapServer/WMSServer',
-  { layers:'0,1,2', format:'image/png', transparent:true, opacity:.8,
-    attribution:'Maine MEGIS', maxZoom:19 }
+// ── NHDPlus HR (high-resolution NHD) WMS ─────────────────────────
+// Captures smaller channels than standard NHD — better for property-scale work
+const nhdplusHR = L.tileLayer.wms(
+  'https://hydro.nationalmap.gov/arcgis/services/NHDPlus_HR/MapServer/WMSServer',
+  { layers:'3', format:'image/png', transparent:true, opacity:.8,
+    attribution:'USGS NHDPlus HR', maxZoom:19
+    // Layer 3 = NHDFlowline HR (includes headwater/ephemeral channels)
+  }
 );
 document.getElementById('tog-megis').addEventListener('change',e=>{
   if(e.target.checked){
-    megisHydro.addTo(map);
-    megisHydro.once('tileerror',()=>{ showInfo('MEGIS service unavailable — check gis.maine.gov'); setTimeout(hideInfo,5000); });
-    showInfo('MEGIS: Maine detailed hydrography — finer resolution than NHD');
+    nhdplusHR.addTo(map);
+    nhdplusHR.once('tileerror',()=>{ showInfo('NHDPlus HR unavailable at this zoom'); setTimeout(hideInfo,4000); });
+    showInfo('NHDPlus HR: high-res USGS streams — captures smaller channels than standard NHD');
     setTimeout(hideInfo,4000);
-  } else { map.removeLayer(megisHydro); }
+  } else { map.removeLayer(nhdplusHR); }
 });
 
 // ── Draw ─────────────────────────────────────────────────────────
