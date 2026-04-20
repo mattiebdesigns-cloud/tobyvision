@@ -800,8 +800,8 @@ document.getElementById('tog-nhd').addEventListener('change',e=>{
 // ── NWI (National Wetlands Inventory) WMS ────────────────────────
 // USFWS wetland polygons — patches often align directly with swale zones
 const nwi = L.tileLayer.wms(
-  'https://fwspublicservices.wim.usgs.gov/wetlandsmapperservices/services/Wetlands/MapServer/WMSServer',
-  { layers:'1', format:'image/png', transparent:true, opacity:.7,
+  'https://fwspublicservices.wim.usgs.gov/wetlandsmapservice/services/Wetlands/MapServer/WMSServer',
+  { layers:'0', format:'image/png', transparent:true, opacity:.7,
     attribution:'USFWS NWI', maxZoom:19 }
 );
 document.getElementById('tog-nwi').addEventListener('change',e=>{
