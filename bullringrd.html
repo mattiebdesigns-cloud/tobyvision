@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bull Ring Rd — Keyline &amp; Water Design · Denmark ME</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+  <style>
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Segoe UI',sans-serif; background:#1a1a1a; color:#eee;
+           height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+    /* ── Banner ─── */
+    #prop-banner { background:#162616; border-bottom:1px solid #2a4a2a;
+      padding:5px 16px; display:flex; align-items:center; gap:18px; flex-shrink:0; flex-wrap:wrap; }
+    #prop-banner .pb-title { font-size:.88rem; font-weight:700; color:#8fbc5a; }
+    #prop-banner .pb-sub   { font-size:.76rem; color:#7a9a5a; }
+    #prop-banner .pb-note  { font-size:.72rem; color:#555; margin-left:auto; font-style:italic; }
+
+    /* ── Header ─── */
+    #header { background:#1e2d1e; padding:6px 12px; flex-shrink:0;
+      display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+      border-bottom:2px solid #3a5a3a; }
+    #header h1 { font-size:.92rem; color:#8fbc5a; letter-spacing:.05em;
+      font-weight:600; white-space:nowrap; }
+    #search-box { display:flex; gap:5px; flex:1; max-width:280px; }
+    #search-input { flex:1; padding:4px 9px; border-radius:5px;
+      border:1px solid #3a5a3a; background:#111; color:#eee; font-size:.8rem; }
+
+    .hdr-btn { padding:4px 10px; border:1px solid #3a5a3a; border-radius:5px;
+      background:#2a3a2a; color:#ccc; cursor:pointer; font-size:.78rem;
+      white-space:nowrap; transition:background .15s; }
+    .hdr-btn:hover  { background:#3a5a3a; color:#fff; }
+    .hdr-btn.active { background:#4a7a2a; color:#fff; border-color:#8fbc5a; }
+    .hdr-btn.primary{ background:#4a7a2a; color:#fff; border-color:#4a7a2a; }
+    .hdr-btn.primary:hover { background:#5a9a3a; }
+    .hdr-btn:disabled { opacity:.38; cursor:not-allowed; }
+
+    #base-select { padding:3px 7px; background:#111; color:#ccc;
+      border:1px solid #3a5a3a; border-radius:5px; font-size:.78rem; cursor:pointer; }
+    .toggle-label { display:flex; align-items:center; gap:4px;
+      font-size:.75rem; color:#aaa; cursor:pointer; white-space:nowrap; }
+    .toggle-label input { cursor:pointer; accent-color:#8fbc5a; }
+    .sep { width:1px; height:20px; background:#3a5a3a; flex-shrink:0; }
+
+    /* ── Main ─── */
+    #main { flex:1; display:flex; overflow:hidden; position:relative; }
+    #map  { flex:1; }
+
+    /* ── Sidebar ─── */
+    #sidebar { width:270px; flex-shrink:0; background:#182818;
+      border-left:1px solid #3a5a3a; overflow-y:auto; display:none; flex-direction:column; }
+    #sidebar.visible { display:flex; }
+    #sb-head { padding:10px 12px; background:#1e2d1e; border-bottom:1px solid #3a5a3a; flex-shrink:0; }
+    #sb-head h2 { font-size:.83rem; color:#8fbc5a; margin-bottom:2px; }
+    #sb-head p  { font-size:.68rem; color:#555; }
+    .site-card { padding:8px 12px; border-bottom:1px solid #222e22; cursor:pointer;
+      transition:background .12s; border-left:3px solid transparent; }
+    .site-card:hover    { background:#1e2d1e; }
+    .site-card.selected { background:#1e2d1e; border-left-color:#8fbc5a; }
+    .sc-title { display:flex; align-items:center; margin-bottom:4px; gap:6px; }
+    .sc-rank  { display:inline-flex; align-items:center; justify-content:center;
+      width:20px; height:20px; border-radius:50%;
+      font-size:.7rem; font-weight:700; color:#111; flex-shrink:0; }
+    .sc-name  { font-size:.8rem; font-weight:600; color:#ccc; }
+    .sc-score { margin-left:auto; font-size:.76rem; color:#8fbc5a; }
+    .sc-metrics { display:grid; grid-template-columns:1fr 1fr; gap:2px; }
+    .sc-m { font-size:.67rem; color:#555; }
+    .sc-m span { color:#999; }
+    .sc-warn { margin-top:3px; font-size:.65rem; color:#c8781a; }
+    #export-panel { padding:10px 12px; border-top:1px solid #3a5a3a;
+      flex-shrink:0; background:#1e2d1e; margin-top:auto; }
+    #export-panel h3 { font-size:.73rem; color:#8fbc5a; margin-bottom:6px; }
+    .exp-btns { display:flex; gap:5px; flex-wrap:wrap; }
+    .exp-btn { padding:4px 10px; border:1px solid #3a5a3a; border-radius:4px;
+      background:#2a3a2a; color:#aaa; cursor:pointer; font-size:.72rem; }
+    .exp-btn:hover { background:#3a5a3a; color:#fff; }
+
+    /* ── Info bar ─── */
+    #info-bar { position:absolute; top:10px; left:50%; transform:translateX(-50%);
+      background:rgba(20,35,20,.93); border:1px solid #3a5a3a; border-radius:6px;
+      padding:6px 14px; z-index:1000; font-size:.78rem; color:#8fbc5a;
+      pointer-events:none; display:none; white-space:nowrap; }
+
+    /* ── Legend ─── */
+    #legend { position:absolute; bottom:28px; left:10px; z-index:1000;
+      background:rgba(20,35,20,.93); border:1px solid #3a5a3a; border-radius:8px;
+      padding:9px 12px; font-size:.7rem; color:#ccc; min-width:195px; }
+    #legend h3 { color:#8fbc5a; margin-bottom:6px; font-size:.75rem; }
+    .lg-item { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+    .lg-dot  { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+    .lg-line { width:20px; height:2px; flex-shrink:0; }
+    .lg-fill { width:12px; height:12px; flex-shrink:0; border:1px dashed; }
+    .lg-note { margin-top:6px; padding-top:5px; border-top:1px solid #2a3a2a;
+      font-size:.64rem; color:#555; }
+
+    /* ── Zoom slider ─── */
+    .zoom-slider-control { background:rgba(20,35,20,.93); border:1px solid #3a5a3a;
+      border-radius:8px; padding:7px 5px; display:flex; flex-direction:column;
+      align-items:center; gap:5px; user-select:none; }
+    .zoom-slider-control span { font-size:.68rem; color:#8fbc5a; font-weight:600; line-height:1; }
+    .zoom-slider-control input[type=range] { writing-mode:vertical-lr; direction:rtl;
+      width:6px; height:110px; cursor:pointer; accent-color:#8fbc5a; background:transparent; }
+    .zoom-btn { background:#2a4a2a; color:#8fbc5a; border:1px solid #3a5a3a;
+      border-radius:4px; width:22px; height:22px; cursor:pointer;
+      font-size:.95rem; line-height:1; padding:0; font-weight:600; }
+    .zoom-btn:hover { background:#3a6a3a; }
+
+    /* ── Settings panel ─── */
+    #wpanel { display:none; position:absolute; top:10px; right:10px; z-index:1001;
+      background:rgba(20,35,20,.97); border:1px solid #3a5a3a; border-radius:8px;
+      padding:11px; min-width:215px; }
+    #wpanel.visible { display:block; }
+    #wpanel h3 { font-size:.73rem; color:#8fbc5a; margin-bottom:9px; }
+    #wpanel h4 { font-size:.67rem; color:#6a8a4a; margin:8px 0 5px; padding-top:6px;
+      border-top:1px solid #2a3a2a; }
+    .wr { margin-bottom:7px; }
+    .wr label { font-size:.67rem; color:#aaa; display:flex; justify-content:space-between; margin-bottom:2px; }
+    .wr input[type=range] { width:100%; accent-color:#8fbc5a; }
+    .wr select, .wr input[type=number] { width:100%; padding:2px 6px; background:#111;
+      border:1px solid #3a5a3a; border-radius:4px; color:#ccc; font-size:.72rem; }
+
+    .leaflet-draw-tooltip { background:#1e2d1e !important; color:#8fbc5a !important;
+      border:1px solid #3a5a3a !important; }
+    .kp-icon { background:none; border:none; }
+    .kp-diamond { width:14px; height:14px; background:#ff9800; transform:rotate(45deg);
+      border:2px solid rgba(255,255,255,.8); box-shadow:0 2px 6px rgba(0,0,0,.7); }
+  </style>
+</head>
+<body>
+
+<div id="prop-banner">
+  <span class="pb-title">502 Bull Ring Rd, Denmark, Maine</span>
+  <span class="pb-sub">~54 ac · Cliff &amp; Stephanie's chestnut / hickory / persimmon planting · near Shawnee Peak</span>
+  <span class="pb-note">Boundary approximate — verify vs Oxford County assessor</span>
+</div>
+
+<div id="header">
+  <h1>🌊 Keyline Water Design</h1>
+  <div id="search-box">
+    <input id="search-input" type="text" placeholder="Address or lat,lng…"/>
+    <button class="hdr-btn" id="search-btn">Go</button>
+  </div>
+  <div class="sep"></div>
+  <button class="hdr-btn" id="btn-draw">✏ Redraw AOI</button>
+  <button class="hdr-btn primary" id="btn-analyze">⚡ Analyze</button>
+  <button class="hdr-btn" id="btn-clear" disabled>✕ Clear</button>
+  <div class="sep"></div>
+  <select id="base-select">
+    <option value="osm">Street</option>
+    <option value="topo">Topo</option>
+    <option value="satellite" selected>Satellite</option>
+  </select>
+  <div class="sep"></div>
+  <label class="toggle-label"><input type="checkbox" id="tog-hillshade" checked/> Shade</label>
+  <label class="toggle-label"><input type="checkbox" id="tog-contours" checked/> Contours</label>
+  <label class="toggle-label"><input type="checkbox" id="tog-swales" checked/> Swales</label>
+  <label class="toggle-label"><input type="checkbox" id="tog-keyline" checked/> Keyline</label>
+  <label class="toggle-label"><input type="checkbox" id="tog-streams" checked/> Streams</label>
+  <label class="toggle-label"><input type="checkbox" id="tog-dams" checked/> Dams</label>
+  <label class="toggle-label"><input type="checkbox" id="tog-route" checked/> Route</label>
+  <button class="hdr-btn" id="btn-settings">⚙ Settings</button>
+</div>
+
+<div id="main">
+  <div id="map"></div>
+  <div id="sidebar">
+    <div id="sb-head">
+      <h2>Analysis Results</h2>
+      <p id="sb-sub">Run Analyze to start</p>
+    </div>
+    <div id="site-list"></div>
+    <div id="export-panel">
+      <h3>Export</h3>
+      <div class="exp-btns">
+        <button class="exp-btn" id="btn-geojson">GeoJSON</button>
+        <button class="exp-btn" id="btn-kml">KML</button>
+        <button class="exp-btn" id="btn-pdf">PDF Report</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="info-bar"></div>
+
+<div id="legend">
+  <h3>Layers</h3>
+  <div class="lg-item"><div class="lg-line" style="background:#8a9a68;height:1px"></div><span>Contours</span></div>
+  <div class="lg-item"><div class="lg-line" style="background:#4a9db7;height:2px"></div><span>Swale zones (≤5% slope)</span></div>
+  <div class="lg-item"><div class="lg-line" style="background:#f1c40f;height:3px"></div><span>Keyline</span></div>
+  <div class="lg-item"><div class="lg-line" style="background:#8fbc5a;height:1.5px;border-top:1.5px dashed #8fbc5a;background:transparent"></div><span>Cultivation parallels</span></div>
+  <div class="lg-item"><div class="lg-dot" style="background:#ff9800;transform:rotate(45deg);border-radius:2px"></div><span>Keypoint (valley inflection)</span></div>
+  <div class="lg-item"><div class="lg-line" style="background:#5a9db7;height:1.5px"></div><span>Streams</span></div>
+  <div class="lg-item"><div class="lg-dot" style="background:#f1c40f"></div><span>Dam site #1 (top score)</span></div>
+  <div class="lg-item"><div class="lg-dot" style="background:#8bc34a"></div><span>Dam sites #2–3</span></div>
+  <div class="lg-item"><div class="lg-dot" style="background:#4a9db7"></div><span>Dam sites #4–7</span></div>
+  <div class="lg-note" id="dem-res-note">DEM: not yet loaded</div>
+  <div class="lg-note" style="color:#7a5a1a">⚠ Soil: MVP default · SSURGO Phase 2</div>
+</div>
+
+<div id="wpanel">
+  <h3>Settings</h3>
+  <h4>Dam Scoring Weights</h4>
+  <div class="wr"><label>Yield / Earthworks <span id="w1v">0.40</span></label>
+    <input type="range" id="w1" min="0" max="1" step="0.05" value="0.4"/></div>
+  <div class="wr"><label>Storage / Earthworks <span id="w2v">0.30</span></label>
+    <input type="range" id="w2" min="0" max="1" step="0.05" value="0.3"/></div>
+  <div class="wr"><label>Soil score <span id="w3v">0.15</span></label>
+    <input type="range" id="w3" min="0" max="1" step="0.05" value="0.15"/></div>
+  <div class="wr"><label>Elevation bias <span id="w4v">0.15</span></label>
+    <input type="range" id="w4" min="0" max="1" step="0.05" value="0.15"/></div>
+  <h4>Hydrology Parameters</h4>
+  <div class="wr"><label>Annual precip (mm) <span id="precipv">1100</span></label>
+    <input type="range" id="precip-input" min="300" max="2500" step="50" value="1100"
+      oninput="document.getElementById('precipv').textContent=this.value"/></div>
+  <div class="wr"><label>Wall height H (m) <span id="wallhv">3</span></label>
+    <input type="range" id="wall-h" min="1" max="6" step="0.5" value="3"
+      oninput="document.getElementById('wallhv').textContent=this.value"/></div>
+  <div class="wr"><label>Stream threshold (ha) <span id="threshv">auto</span></label>
+    <input type="range" id="thresh-ha" min="0.2" max="10" step="0.2" value="0"
+      oninput="document.getElementById('threshv').textContent=+this.value>0?(+this.value)+' ha':'auto'"/></div>
+  <h4>Display</h4>
+  <div class="wr"><label>Contour interval (m)</label>
+    <select id="contour-interval">
+      <option value="1">1 m</option>
+      <option value="2" selected>2 m</option>
+      <option value="5">5 m</option>
+      <option value="10">10 m</option>
+    </select>
+  </div>
+  <div class="wr"><label>Swale max slope (%)</label>
+    <select id="swale-slope">
+      <option value="5" selected>5%</option>
+      <option value="10">10%</option>
+      <option value="15">15%</option>
+    </select>
+  </div>
+</div>
+
+<!-- ── Libraries ─── -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+'use strict';
+
+/* ================================================================
+   WORKER SOURCE
+   ================================================================ */
+const WORKER_SRC = `
+'use strict';
+const DX=[1,1,0,-1,-1,-1,0,1], DY=[0,1,1,1,0,-1,-1,-1];
+const D8=[1,2,4,8,16,32,64,128], SQRT2=Math.SQRT2, NODATA=-9999;
+const DIR_IDX=new Int8Array(256).fill(-1);
+D8.forEach((c,i)=>{ DIR_IDX[c]=i; });
+
+class MinHeap {
+  constructor(){ this._d=[]; }
+  get size(){ return this._d.length; }
+  push(p,v){ this._d.push([p,v]); this._up(this._d.length-1); }
+  pop(){ const t=this._d[0],l=this._d.pop(); if(this._d.length){ this._d[0]=l; this._dn(0); } return t; }
+  _up(i){ const d=this._d; while(i>0){ const p=(i-1)>>1; if(d[p][0]<=d[i][0])break; const t=d[p];d[p]=d[i];d[i]=t;i=p; } }
+  _dn(i){ const d=this._d,n=d.length; for(;;){ let s=i,l=2*i+1,r=2*i+2; if(l<n&&d[l][0]<d[s][0])s=l; if(r<n&&d[r][0]<d[s][0])s=r; if(s===i)break; const t=d[s];d[s]=d[i];d[i]=t;i=s; } }
+}
+
+function fillSinks(elev,W,H){
+  const f=new Float32Array(elev),cl=new Uint8Array(W*H),h=new MinHeap();
+  const add=i=>{ if(f[i]>NODATA+1&&!cl[i]){ cl[i]=1; h.push(f[i],i); } };
+  for(let x=0;x<W;x++){ add(x); add((H-1)*W+x); }
+  for(let y=1;y<H-1;y++){ add(y*W); add(y*W+W-1); }
+  while(h.size>0){
+    const[ev,idx]=h.pop(); const cx=idx%W,cy=(idx/W)|0;
+    for(let d=0;d<8;d++){
+      const nx=cx+DX[d],ny=cy+DY[d]; if(nx<0||nx>=W||ny<0||ny>=H) continue;
+      const ni=ny*W+nx; if(cl[ni]||f[ni]<=NODATA+1) continue;
+      cl[ni]=1; if(f[ni]<ev) f[ni]=ev; h.push(f[ni],ni);
+    }
+  }
+  return f;
+}
+
+function flowDir(elev,W,H,csM){
+  const dir=new Uint8Array(W*H);
+  for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){
+    const idx=y*W+x; if(elev[idx]<=NODATA+1) continue;
+    let mx=-Infinity,best=-1;
+    for(let d=0;d<8;d++){
+      const ni=(y+DY[d])*W+(x+DX[d]); if(elev[ni]<=NODATA+1) continue;
+      const dist=(d%2===0)?csM:csM*SQRT2, drop=(elev[idx]-elev[ni])/dist;
+      if(drop>mx){ mx=drop; best=d; }
+    }
+    if(best<0) best=(Math.random()*8)|0;
+    dir[idx]=D8[best];
+  }
+  return dir;
+}
+
+function flowAccum(dir,elev,W,H){
+  const n=W*H, acc=new Float32Array(n).fill(1), idx=new Uint32Array(n);
+  for(let i=0;i<n;i++) idx[i]=i;
+  idx.sort((a,b)=>elev[b]-elev[a]);
+  for(const i of idx){
+    const d=DIR_IDX[dir[i]]; if(d<0) continue;
+    const nx=(i%W)+DX[d], ny=((i/W)|0)+DY[d];
+    if(nx>=0&&nx<W&&ny>=0&&ny<H) acc[ny*W+nx]+=acc[i];
+  }
+  return acc;
+}
+
+function csMetres(bbox,W,H){
+  const[west,south,east,north]=bbox, midLat=(north+south)/2*Math.PI/180;
+  return ((north-south)/H*111320 + (east-west)/W*111320*Math.cos(midLat))/2;
+}
+
+function toLngLat(col,row,bbox,W,H){
+  const[west,,east,north]=bbox;
+  return[west+(col+0.5)/W*(east-west), north-(row+0.5)/H*(bbox[3]-bbox[1])];
+}
+
+function gridFracLL(gx,gy,bbox,W,H){
+  const[west,,east,north]=bbox;
+  return[west+gx/W*(east-west), north-gy/H*(bbox[3]-bbox[1])];
+}
+
+// ── Marching squares ──────────────────────────────────────────
+function marchingSquares(elev,W,H,iso){
+  const segs=[];
+  for(let y=0;y<H-1;y++) for(let x=0;x<W-1;x++){
+    const tl=elev[y*W+x], tr=elev[y*W+x+1];
+    const br=elev[(y+1)*W+x+1], bl=elev[(y+1)*W+x];
+    if(tl<=NODATA+1||tr<=NODATA+1||br<=NODATA+1||bl<=NODATA+1) continue;
+    const a=v=>v>=iso, code=(a(tl)?8:0)|(a(tr)?4:0)|(a(br)?2:0)|(a(bl)?1:0);
+    if(code===0||code===15) continue;
+    const lp=(a,b)=>(iso-a)/(b-a+1e-10);
+    const t=[x+lp(tl,tr),y], r=[x+1,y+lp(tr,br)];
+    const b=[x+lp(bl,br),y+1], l=[x,y+lp(tl,bl)];
+    switch(code){
+      case 1:  segs.push([l,b]); break;
+      case 2:  segs.push([b,r]); break;
+      case 3:  segs.push([l,r]); break;
+      case 4:  segs.push([t,r]); break;
+      case 5:  segs.push([t,r],[l,b]); break;
+      case 6:  segs.push([t,b]); break;
+      case 7:  segs.push([l,t]); break;
+      case 8:  segs.push([t,l]); break;
+      case 9:  segs.push([b,t]); break;
+      case 10: segs.push([t,l],[r,b]); break;
+      case 11: segs.push([r,t]); break;
+      case 12: segs.push([r,l]); break;
+      case 13: segs.push([b,l]); break;
+      case 14: segs.push([l,b]); break;
+    }
+  }
+  return segs;
+}
+
+// ── Stitch raw segments into polylines ────────────────────────
+function stitchSegs(segs){
+  if(!segs.length) return [];
+  const PREC=1e4;
+  const key=p=>Math.round(p[0]*PREC)*1e7+Math.round(p[1]*PREC);
+  const adj=new Map();
+  for(let i=0;i<segs.length;i++) for(let e=0;e<2;e++){
+    const k=key(segs[i][e]); if(!adj.has(k)) adj.set(k,[]);
+    adj.get(k).push(i*2+e);
+  }
+  const used=new Uint8Array(segs.length), chains=[];
+  for(let start=0;start<segs.length;start++){
+    if(used[start]) continue;
+    used[start]=1;
+    let chain=[...segs[start]];
+    for(let dir=0;dir<2;dir++){
+      let go=true;
+      while(go){ go=false;
+        const tail=dir===0?chain[chain.length-1]:chain[0];
+        const ms=adj.get(key(tail))||[];
+        for(const enc of ms){
+          const si=enc>>1,ei=enc&1; if(used[si]) continue;
+          used[si]=1;
+          const pt=segs[si][1-ei];
+          if(dir===0) chain.push(pt); else chain.unshift(pt);
+          go=true; break;
+        }
+      }
+    }
+    chains.push(chain);
+  }
+  return chains;
+}
+
+// ── Sample profile for valley analysis ───────────────────────
+function sampleProfile(cx,cy,pvx,pvy,elev,W,H,csM,maxSteps){
+  const left=[],right=[];
+  for(const sign of[-1,1]){
+    const arr=sign<0?left:right;
+    for(let r=1;r<=maxSteps;r++){
+      const nx=Math.round(cx+sign*r*pvx),ny=Math.round(cy+sign*r*pvy);
+      if(nx<0||nx>=W||ny<0||ny>=H) break;
+      const e=elev[ny*W+nx]; if(e<=NODATA+1) break;
+      const df=(Math.abs(pvx)>.5&&Math.abs(pvy)>.5)?SQRT2:1;
+      arr.push({dist:r*csM*df,elev:e});
+      if(e>elev[cy*W+cx]+30) break;
+    }
+  }
+  return{left,right};
+}
+
+function analyzeValley(cx,cy,elev,dir,W,H,csM,H_wall){
+  const cIdx=cy*W+cx, ce=elev[cIdx];
+  if(ce<=NODATA+1) return null;
+  const dc=DIR_IDX[dir[cIdx]]; if(dc<0) return null;
+  const pvx=-DY[dc],pvy=DX[dc], mag=Math.sqrt(pvx*pvx+pvy*pvy)||1;
+  const ux=pvx/mag, uy=pvy/mag;
+  const maxS=Math.min(100,Math.ceil(200/csM));
+  const{left,right}=sampleProfile(cx,cy,ux,uy,elev,W,H,csM,maxS);
+  if(left.length<2||right.length<2) return null;
+  const wE=ce+H_wall;
+  const cross=arr=>{ for(let i=1;i<arr.length;i++){
+    if(arr[i-1].elev<wE&&arr[i].elev>=wE){ const f=(wE-arr[i-1].elev)/(arr[i].elev-arr[i-1].elev); return arr[i-1].dist+f*(arr[i].dist-arr[i-1].dist); }
+    if(arr[i].elev>=wE) return arr[i].dist;
+  } return null; };
+  const ld=cross(left),rd=cross(right); if(!ld||!rd) return null;
+  return{wallLength:ld+rd,valleyRatio:H_wall/(ld+rd)};
+}
+
+function streamGrad(cx,cy,elev,dir,W,H,csM,steps){
+  let x=cx,y=cy,dist=0; const e0=elev[cy*W+cx];
+  for(let i=0;i<steps;i++){
+    const d=DIR_IDX[dir[y*W+x]]; if(d<0) break;
+    const nx=x+DX[d],ny=y+DY[d]; if(nx<0||nx>=W||ny<0||ny>=H) break;
+    dist+=(d%2===0)?csM:csM*SQRT2; x=nx; y=ny;
+  }
+  return dist<=0?0:(e0-elev[y*W+x])/dist;
+}
+
+function watershed(tIdx,dir,W,H){
+  const ws=new Uint8Array(W*H),q=[tIdx]; ws[tIdx]=1; let qi=0;
+  while(qi<q.length){ const cur=q[qi++],cx=cur%W,cy=(cur/W)|0;
+    for(let d=0;d<8;d++){
+      const nx=cx+DX[d],ny=cy+DY[d]; if(nx<0||nx>=W||ny<0||ny>=H) continue;
+      const ni=ny*W+nx; if(ws[ni]) continue;
+      const nd=DIR_IDX[dir[ni]]; if(nd<0) continue;
+      if((nx+DX[nd])===cx&&(ny+DY[nd])===cy){ ws[ni]=1; q.push(ni); }
+    }
+  }
+  return ws;
+}
+
+function convexHull(pts){
+  if(pts.length<3) return[...pts,pts[0]];
+  let lo=0; for(let i=1;i<pts.length;i++) if(pts[i][0]<pts[lo][0]) lo=i;
+  const hull=[]; let cur=lo;
+  do{
+    hull.push(pts[cur]); let nxt=(cur+1)%pts.length;
+    for(let i=0;i<pts.length;i++){
+      const cr=(pts[nxt][0]-pts[cur][0])*(pts[i][1]-pts[cur][1])-(pts[nxt][1]-pts[cur][1])*(pts[i][0]-pts[cur][0]);
+      if(cr<0) nxt=i;
+    }
+    cur=nxt; if(hull.length>pts.length+1) break;
+  } while(cur!==lo);
+  hull.push(hull[0]); return hull;
+}
+
+function aStar(sx,sy,gx,gy,elev,accum,W,H,csM){
+  const key=(x,y)=>y*W+x, dist=(x,y)=>Math.hypot(x-gx,y-gy);
+  let mxA=1; for(let i=0;i<accum.length;i++) if(accum[i]>mxA) mxA=accum[i];
+  const gS=new Float32Array(W*H).fill(Infinity), came=new Int32Array(W*H).fill(-1);
+  gS[key(sx,sy)]=0; const open=new MinHeap(); open.push(dist(sx,sy),key(sx,sy));
+  let its=0;
+  while(open.size>0&&its++<W*H){
+    const[,idx]=open.pop(); const cx=idx%W,cy=(idx/W)|0;
+    if(cx===gx&&cy===gy){ const p=[]; let c=key(gx,gy); while(c!==-1){p.unshift([c%W,(c/W)|0]);c=came[c];} return p; }
+    for(let d=0;d<8;d++){
+      const nx=cx+DX[d],ny=cy+DY[d]; if(nx<0||nx>=W||ny<0||ny>=H) continue;
+      const ni=key(nx,ny); if(elev[ni]<=NODATA+1) continue;
+      const mv=(d%2===0)?csM:csM*SQRT2, pen=1+5*(accum[ni]/mxA);
+      const cost=mv*(1+Math.abs(elev[ni]-elev[idx])/csM)*pen, ng=gS[idx]+cost;
+      if(ng<gS[ni]){ gS[ni]=ng; came[ni]=idx; open.push(ng+dist(nx,ny)*csM,ni); }
+    }
+  }
+  return null;
+}
+
+// ── Find main stream path (walk upstream from highest-accum) ─
+function mainStreamPath(streamCells,accum,dir,W,H){
+  if(!streamCells.length) return[];
+  let mxA=0,startIdx=0;
+  for(const[x,y]of streamCells){ const a=accum[y*W+x]; if(a>mxA){mxA=a;startIdx=y*W+x;} }
+  const inS=new Uint8Array(W*H);
+  for(const[x,y]of streamCells) inS[y*W+x]=1;
+  const path=[]; const vis=new Uint8Array(W*H); let cur=startIdx;
+  while(cur>=0&&!vis[cur]&&path.length<3000){
+    vis[cur]=1; path.push(cur);
+    let bestNext=-1,bestA=0;
+    const cx=cur%W,cy=(cur/W)|0;
+    for(let d=0;d<8;d++){
+      const nx=cx+DX[d],ny=cy+DY[d]; if(nx<0||nx>=W||ny<0||ny>=H) continue;
+      const ni=ny*W+nx; if(!inS[ni]||vis[ni]) continue;
+      const nd=DIR_IDX[dir[ni]]; if(nd<0) continue;
+      if((nx+DX[nd])===cx&&(ny+DY[nd])===cy&&accum[ni]>bestA){ bestA=accum[ni]; bestNext=ni; }
+    }
+    cur=bestNext;
+  }
+  return path;
+}
+
+// ── Find keypoint (max slope inflection on main channel) ─────
+function findKeypoint(path,filled,W,H,csM){
+  if(path.length<12) return null;
+  const WIN=6; const slopes=[];
+  for(let i=0;i<path.length-WIN;i++){
+    const i0=path[i],i1=path[i+WIN];
+    const dx=(i1%W)-(i0%W), dy=((i1/W)|0)-((i0/W)|0);
+    const dist=Math.sqrt(dx*dx+dy*dy)*csM;
+    slopes.push(dist>0?Math.abs(filled[i0]-filled[i1])/dist:0);
+  }
+  // Smooth slopes
+  const sm=slopes.map((_,i)=>{
+    let s=0,n=0; for(let j=Math.max(0,i-2);j<=Math.min(slopes.length-1,i+2);j++){s+=slopes[j];n++;} return s/n;
+  });
+  // Keypoint = max slope along main channel
+  let mxS=0,mxI=0; sm.forEach((s,i)=>{ if(s>mxS){mxS=s;mxI=i;} });
+  const kpIdx=path[mxI+Math.floor(WIN/2)];
+  const kx=kpIdx%W, ky=(kpIdx/W)|0;
+  return{idx:kpIdx, x:kx, y:ky, elevation:filled[kpIdx]};
+}
+
+// ── Main pipeline ─────────────────────────────────────────────
+self.onmessage=function(e){
+  const{elevation,W,H,bbox,weights,precipMM,wallH,threshHaOverride,contourInterval,swaleSlopePct,aoiAreaHa}=e.data;
+  const WALL_H=wallH||3;
+
+  const csM=csMetres(bbox,W,H), cellArea=csM*csM, precipM=precipMM/1000;
+
+  // Auto-scale thresholds to AOI size
+  const aoi=aoiAreaHa||22;
+  const THRESH_HA=threshHaOverride>0?threshHaOverride:Math.max(0.3,Math.min(5,aoi*0.05));
+  const MIN_HA=Math.max(0.2,Math.min(2,aoi*0.03));
+  const threshCells=(THRESH_HA*1e4)/cellArea;
+  const minHaCells=(MIN_HA*1e4)/cellArea;
+
+  const elev=new Float32Array(elevation);
+  for(let i=0;i<elev.length;i++) if(elev[i]<-1000||isNaN(elev[i])) elev[i]=NODATA;
+
+  let maxE=-Infinity,minE=Infinity;
+  for(let i=0;i<elev.length;i++) if(elev[i]>NODATA+1){ if(elev[i]>maxE)maxE=elev[i]; if(elev[i]<minE)minE=elev[i]; }
+  const eRange=(maxE-minE)||1;
+
+  self.postMessage({type:'progress',msg:'Filling sinks…'});
+  const filled=fillSinks(elev,W,H);
+
+  self.postMessage({type:'progress',msg:'Computing flow direction…'});
+  const dir=flowDir(filled,W,H,csM);
+
+  self.postMessage({type:'progress',msg:'Computing flow accumulation…'});
+  const accum=flowAccum(dir,filled,W,H);
+
+  self.postMessage({type:'progress',msg:'Extracting stream network…'});
+  const streamSegs=[], streamCells=[];
+  for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){
+    const idx=y*W+x;
+    if(accum[idx]<threshCells||elev[idx]<=NODATA+1) continue;
+    streamCells.push([x,y]);
+    const d=DIR_IDX[dir[idx]]; if(d<0) continue;
+    const nx=x+DX[d],ny=y+DY[d]; if(nx<0||nx>=W||ny<0||ny>=H) continue;
+    const[lng1,lat1]=toLngLat(x,y,bbox,W,H),[lng2,lat2]=toLngLat(nx,ny,bbox,W,H);
+    streamSegs.push([[lng1,lat1],[lng2,lat2]]);
+  }
+
+  // ── Contour lines ──────────────────────────────────────────
+  self.postMessage({type:'progress',msg:'Computing contour lines…'});
+  const ci=contourInterval||2;
+  // Swale zone: cells with accumulation between swaleMin and threshCells AND gentle slope
+  const swaleSlopeRad=(swaleSlopePct||5)/100;
+  const swaleMinCells=(0.05*1e4)/cellArea; // 0.05 ha minimum contributing area
+
+  const normalCoords=[], swaleCoords=[];
+
+  const isoMin=Math.ceil(minE/ci)*ci, isoMax=Math.floor(maxE/ci)*ci;
+  for(let iso=isoMin;iso<=isoMax;iso+=ci){
+    const segs=marchingSquares(filled,W,H,iso);
+    if(!segs.length) continue;
+    const chains=stitchSegs(segs);
+    for(const chain of chains){
+      if(chain.length<2) continue;
+      // Classify: check midpoint cell
+      const mid=chain[(chain.length/2)|0];
+      const mx=Math.min(W-1,Math.max(0,Math.round(mid[0])));
+      const my=Math.min(H-1,Math.max(0,Math.round(mid[1])));
+      const midIdx=my*W+mx;
+      const a=accum[midIdx];
+      // Slope at midpoint
+      const dc=DIR_IDX[dir[midIdx]];
+      let slope=0;
+      if(dc>=0){
+        const nx2=mx+DX[dc],ny2=my+DY[dc];
+        if(nx2>=0&&nx2<W&&ny2>=0&&ny2<H){
+          const dist2=(dc%2===0)?csM:csM*SQRT2;
+          slope=(filled[midIdx]-filled[ny2*W+nx2])/dist2;
+        }
+      }
+      const coords=chain.map(([gx,gy])=>gridFracLL(gx,gy,bbox,W,H));
+      // Swale: in stream zone, gentle slope
+      if(a>=swaleMinCells&&a<threshCells&&slope>=0&&slope<=swaleSlopeRad){
+        swaleCoords.push(coords);
+      } else {
+        normalCoords.push(coords);
+      }
+    }
+  }
+
+  // ── Keypoint and keyline ───────────────────────────────────
+  self.postMessage({type:'progress',msg:'Finding keypoint and keyline…'});
+  const mainPath=mainStreamPath(streamCells,accum,dir,W,H);
+  const kp=findKeypoint(mainPath,filled,W,H,csM);
+  let keylineCoords=[], cultivationCoords=[], keypointFeatures=[];
+
+  if(kp){
+    const kpLL=toLngLat(kp.x,kp.y,bbox,W,H);
+    keypointFeatures.push({type:'Feature',geometry:{type:'Point',coordinates:kpLL},
+      properties:{elevation:Math.round(kp.elevation*10)/10}});
+    // Keyline: contour at keypoint elevation
+    const klS=marchingSquares(filled,W,H,kp.elevation);
+    const klC=stitchSegs(klS);
+    keylineCoords=klC.filter(c=>c.length>=2).map(c=>c.map(([gx,gy])=>gridFracLL(gx,gy,bbox,W,H)));
+    // Cultivation parallels: contours at ±N*ci*2 around keypoint elevation
+    for(let n=1;n<=6;n++) for(const sign of[-1,1]){
+      const cIso=kp.elevation+sign*n*ci*2;
+      if(cIso<minE+ci||cIso>maxE-ci) continue;
+      const cS=marchingSquares(filled,W,H,cIso);
+      const cC=stitchSegs(cS);
+      for(const c of cC) if(c.length>=2) cultivationCoords.push(c.map(([gx,gy])=>gridFracLL(gx,gy,bbox,W,H)));
+    }
+  }
+
+  // ── Dam candidate sites ────────────────────────────────────
+  self.postMessage({type:'progress',msg:\`Scanning \${streamCells.length} stream cells for dam candidates…\`});
+  const step=Math.max(1,Math.ceil(6/csM));
+  const cands=[];
+
+  for(let i=0;i<streamCells.length;i+=step){
+    const[cx,cy]=streamCells[i], idx=cy*W+cx;
+    const catchCells=accum[idx], catchHa=catchCells*cellArea/1e4;
+    if(catchHa<MIN_HA) continue;
+    const valley=analyzeValley(cx,cy,filled,dir,W,H,csM,WALL_H);
+    if(!valley||valley.wallLength<=0||valley.wallLength>250||valley.valleyRatio<0.02) continue;
+    const grad=streamGrad(cx,cy,filled,dir,W,H,csM,12);
+    if(grad<0.001||grad>0.18) continue;
+    const catchM2=catchCells*cellArea, yield_m3=catchM2*0.35*precipM;
+    const upLen=Math.sqrt(catchM2)*0.28, storage_m3=0.5*valley.wallLength*WALL_H*upLen;
+    const earth_m3=2*WALL_H*WALL_H*valley.wallLength, elevNorm=(filled[idx]-minE)/eRange;
+    const[lng,lat]=toLngLat(cx,cy,bbox,W,H);
+    cands.push({x:cx,y:cy,lat,lng,
+      catchmentHa:Math.round(catchHa*10)/10,catchM2,
+      wallLength:Math.round(valley.wallLength),valleyRatio:valley.valleyRatio,
+      storage_m3:Math.round(storage_m3),yield_m3:Math.round(yield_m3),
+      earth_m3:Math.round(earth_m3),elevation:Math.round(filled[idx]*10)/10,
+      gradient:Math.round(grad*1000)/1000,elevNorm,permitFlag:storage_m3>61674});
+  }
+
+  self.postMessage({type:'progress',msg:\`Scoring \${cands.length} dam candidates…\`});
+  const topSites=[];
+  if(cands.length){
+    const{w1,w2,w3,w4}=weights, SOIL=0.7;
+    let mxYE=1e-9,mxSE=1e-9;
+    for(const c of cands){ const ye=c.yield_m3/(c.earth_m3||1),se=c.storage_m3/(c.earth_m3||1); if(ye>mxYE)mxYE=ye; if(se>mxSE)mxSE=se; }
+    let mxEN=1e-9,mnEN=1;
+    for(const c of cands){ if(c.elevNorm>mxEN)mxEN=c.elevNorm; if(c.elevNorm<mnEN)mnEN=c.elevNorm; }
+    const enR=(mxEN-mnEN)||1;
+    for(const c of cands){ const ye=c.yield_m3/(c.earth_m3||1)/mxYE,se=c.storage_m3/(c.earth_m3||1)/mxSE,en=(c.elevNorm-mnEN)/enR; c.score=Math.round((w1*ye+w2*se+w3*SOIL+w4*en)*100)/100; }
+    cands.sort((a,b)=>b.score-a.score);
+    const clD=50/csM;
+    for(const c of cands){
+      if(!topSites.some(s=>{ const dx=c.x-s.x,dy=c.y-s.y; return Math.sqrt(dx*dx+dy*dy)<clD; })) topSites.push(c);
+      if(topSites.length>=10) break;
+    }
+  }
+
+  // ── Catchments ────────────────────────────────────────────
+  self.postMessage({type:'progress',msg:'Delineating catchments…'});
+  const catchFs=[];
+  for(let i=0;i<Math.min(5,topSites.length);i++){
+    const s=topSites[i], ws=watershed(s.y*W+s.x,dir,W,H), pts=[];
+    const stride=Math.max(1,Math.ceil(ws.length/800));
+    for(let idx=0;idx<ws.length;idx+=stride) if(ws[idx]){ const[lng,lat]=toLngLat(idx%W,(idx/W)|0,bbox,W,H); pts.push([lng,lat]); }
+    if(pts.length>=4) catchFs.push({type:'Feature',properties:{rank:i+1},geometry:{type:'Polygon',coordinates:[convexHull(pts)]}});
+  }
+
+  // ── Access route ──────────────────────────────────────────
+  self.postMessage({type:'progress',msg:'Computing access route…'});
+  let routeCoords=null;
+  if(topSites.length>=2){
+    const rPts=[];
+    for(let i=0;i<Math.min(3,topSites.length)-1;i++){
+      const s1=topSites[i],s2=topSites[i+1];
+      const path=aStar(s1.x,s1.y,s2.x,s2.y,filled,accum,W,H,csM);
+      if(path) for(const[px,py]of path){ const[lng,lat]=toLngLat(px,py,bbox,W,H); rPts.push([lng,lat]); }
+    }
+    if(rPts.length>1) routeCoords={type:'Feature',geometry:{type:'LineString',coordinates:rPts},properties:{label:'Ridge access route'}};
+  }
+
+  self.postMessage({
+    type:'result', sites:topSites,
+    streams:streamSegs.length?{type:'Feature',geometry:{type:'MultiLineString',coordinates:streamSegs},properties:{}}:null,
+    catchments:{type:'FeatureCollection',features:catchFs},
+    route:routeCoords,
+    contours:{
+      normal: normalCoords.length?{type:'Feature',geometry:{type:'MultiLineString',coordinates:normalCoords},properties:{}}:null,
+      swale:  swaleCoords.length?{type:'Feature',geometry:{type:'MultiLineString',coordinates:swaleCoords},properties:{}}:null,
+      keyline:keylineCoords.length?{type:'Feature',geometry:{type:'MultiLineString',coordinates:keylineCoords},properties:{}}:null,
+      cultivation:cultivationCoords.length?{type:'Feature',geometry:{type:'MultiLineString',coordinates:cultivationCoords},properties:{}}:null,
+    },
+    keypoints:keypointFeatures.length?{type:'FeatureCollection',features:keypointFeatures}:null,
+    meta:{ threshHa:THRESH_HA, minHa:MIN_HA, wallH:WALL_H }
+  });
+};
+`;
+
+/* ================================================================
+   MAIN THREAD
+   ================================================================ */
+const workerBlob = new Blob([WORKER_SRC], {type:'application/javascript'});
+const workerUrl  = URL.createObjectURL(workerBlob);
+let   activeWorker = null;
+
+// ── Map ──────────────────────────────────────────────────────────
+const map = L.map('map', {center:[43.9382,-70.7958], zoom:14, zoomControl:false});
+
+const ZoomSlider = L.Control.extend({
+  options:{position:'topleft'},
+  onAdd(m){
+    const[MIN,MAX]=[1,25];
+    const div=L.DomUtil.create('div','zoom-slider-control');
+    L.DomEvent.disableClickPropagation(div); L.DomEvent.disableScrollPropagation(div);
+    const bp=L.DomUtil.create('button','zoom-btn',div); bp.textContent='+';
+    const sl=L.DomUtil.create('input','',div); sl.type='range';sl.min=MIN;sl.max=MAX;sl.step=1;sl.value=m.getZoom();
+    const lb=L.DomUtil.create('span','',div); lb.textContent=m.getZoom();
+    const bm=L.DomUtil.create('button','zoom-btn',div); bm.textContent='−';
+    const set=v=>{const z=Math.max(MIN,Math.min(MAX,v));m.setZoom(z);sl.value=z;lb.textContent=z;};
+    bp.onclick=()=>set(+sl.value+1); bm.onclick=()=>set(+sl.value-1);
+    sl.oninput=()=>set(+sl.value);
+    m.on('zoomend',()=>{sl.value=m.getZoom();lb.textContent=m.getZoom();});
+    return div;
+  }
+});
+new ZoomSlider().addTo(map);
+
+const bases = {
+  osm:       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB',maxZoom:19}),
+  topo:      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB',maxZoom:19}),
+  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Esri',maxZoom:19})
+};
+let curBase=bases.satellite; curBase.addTo(map);
+const hillshade=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',{opacity:.45,maxZoom:16});
+hillshade.addTo(map);
+
+document.getElementById('base-select').addEventListener('change',e=>{
+  map.removeLayer(curBase); curBase=bases[e.target.value]; curBase.addTo(map);
+  if(map.hasLayer(hillshade)){map.removeLayer(hillshade);hillshade.addTo(map);}
+});
+document.getElementById('tog-hillshade').addEventListener('change',e=>e.target.checked?hillshade.addTo(map):map.removeLayer(hillshade));
+
+// ── Draw ─────────────────────────────────────────────────────────
+const drawn=new L.FeatureGroup().addTo(map);
+let drawMode=null;
+
+document.getElementById('btn-draw').addEventListener('click',()=>{
+  const btn=document.getElementById('btn-draw');
+  if(drawMode){drawMode.disable();drawMode=null;btn.classList.remove('active');return;}
+  drawn.clearLayers(); clearResults();
+  drawMode=new L.Draw.Polygon(map,{shapeOptions:{color:'#8fbc5a',fillOpacity:.08}});
+  drawMode.enable(); btn.classList.add('active');
+  showInfo('Click to place vertices — double-click to close polygon.');
+});
+map.on(L.Draw.Event.CREATED,e=>{
+  drawn.addLayer(e.layer); drawMode=null;
+  document.getElementById('btn-draw').classList.remove('active');
+  document.getElementById('btn-analyze').disabled=false;
+  document.getElementById('btn-clear').disabled=false;
+  hideInfo();
+});
+
+// ── Search ───────────────────────────────────────────────────────
+document.getElementById('search-btn').addEventListener('click',doSearch);
+document.getElementById('search-input').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
+function doSearch(){
+  const v=document.getElementById('search-input').value.trim(); if(!v)return;
+  const ll=v.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
+  if(ll){map.flyTo([+ll[1],+ll[2]],17);return;}
+  showInfo('Searching…');
+  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(v)}&limit=1`)
+    .then(r=>r.json()).then(rs=>{
+      if(!rs.length){showInfo('Not found');setTimeout(hideInfo,3000);return;}
+      map.flyTo([+rs[0].lat,+rs[0].lon],17);
+      showInfo(rs[0].display_name.slice(0,70)); setTimeout(hideInfo,3000);
+    }).catch(()=>{showInfo('Search failed');setTimeout(hideInfo,3000);});
+}
+
+// ── Layers ───────────────────────────────────────────────────────
+let lContours=null,lSwales=null,lKeyline=null,lCultivation=null;
+let lStreams=null,lCatch=null,lRoute=null;
+let lMarkers=[],lKeypoints=[];
+let lastData=null;
+
+function clearResults(){
+  [lContours,lSwales,lKeyline,lCultivation,lStreams,lCatch,lRoute].forEach(l=>{if(l)map.removeLayer(l);});
+  lContours=lSwales=lKeyline=lCultivation=lStreams=lCatch=lRoute=null;
+  [...lMarkers,...lKeypoints].forEach(m=>map.removeLayer(m));
+  lMarkers=[]; lKeypoints=[];
+  document.getElementById('site-list').innerHTML='';
+  document.getElementById('sidebar').classList.remove('visible');
+  lastData=null;
+  document.getElementById('dem-res-note').textContent='DEM: not yet loaded';
+}
+
+document.getElementById('btn-clear').addEventListener('click',()=>{
+  drawn.clearLayers(); clearResults();
+  document.getElementById('btn-clear').disabled=true;
+  preloadProperty();
+});
+
+// Layer toggle helpers
+const layerToggle=(id,getter)=>{
+  document.getElementById(id).addEventListener('change',e=>{
+    const l=getter(); if(l)(e.target.checked?l.addTo(map):map.removeLayer(l));
+  });
+};
+layerToggle('tog-contours',()=>lContours);
+layerToggle('tog-swales',  ()=>lSwales);
+layerToggle('tog-keyline', ()=>{ if(lKeyline)lKeyline.addTo?.[e?.target?.checked?'addTo':'remove']?.(map); return null; });
+layerToggle('tog-streams', ()=>lStreams);
+layerToggle('tog-dams',    ()=>null);
+layerToggle('tog-route',   ()=>lRoute);
+
+// Keyline toggle needs to handle multiple layers
+document.getElementById('tog-keyline').addEventListener('change',e=>{
+  [lKeyline,lCultivation,...lKeypoints].forEach(l=>{
+    if(!l) return;
+    e.target.checked ? l.addTo(map) : map.removeLayer(l);
+  });
+});
+document.getElementById('tog-dams').addEventListener('change',e=>{
+  lMarkers.forEach(m=>e.target.checked?m.addTo(map):map.removeLayer(m));
+  if(lCatch) e.target.checked?lCatch.addTo(map):map.removeLayer(lCatch);
+});
+
+// Settings panel
+document.getElementById('btn-settings').addEventListener('click',()=>document.getElementById('wpanel').classList.toggle('visible'));
+['w1','w2','w3','w4'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',()=>
+    document.getElementById(id+'v').textContent=parseFloat(document.getElementById(id).value).toFixed(2));
+});
+function weights(){return{w1:+document.getElementById('w1').value,w2:+document.getElementById('w2').value,w3:+document.getElementById('w3').value,w4:+document.getElementById('w4').value};}
+
+// ── Site pin colours ──────────────────────────────────────────────
+const COLORS=['#f1c40f','#daa818','#8bc34a','#5aad60','#4a9db7','#4a9db7','#4a9db7','#9b6bc4','#9b6bc4','#9b6bc4'];
+function siteIcon(rank){
+  const c=COLORS[rank-1]||'#aaa',sz=rank===1?28:rank<=3?24:20;
+  return L.divIcon({html:`<div style="background:${c};width:${sz}px;height:${sz}px;border-radius:50%;border:2px solid rgba(255,255,255,0.8);display:flex;align-items:center;justify-content:center;font-size:${sz<=20?10:12}px;font-weight:700;color:#111;box-shadow:0 2px 6px rgba(0,0,0,0.7);line-height:1">${rank}</div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],className:''});
+}
+
+function keypointIcon(elev){
+  return L.divIcon({html:`<div style="background:#ff9800;width:14px;height:14px;transform:rotate(45deg);border:2px solid rgba(255,255,255,.9);box-shadow:0 2px 6px rgba(0,0,0,.7)" title="Keypoint ${elev}m"></div>`,iconSize:[14,14],iconAnchor:[7,7],className:''});
+}
+
+// ── Render results ────────────────────────────────────────────────
+function renderResults(data){
+  const{sites,streams,catchments,route,contours,keypoints,meta}=data;
+  lastData=data;
+
+  // Contours
+  if(contours?.normal && document.getElementById('tog-contours').checked)
+    lContours=L.geoJSON(contours.normal,{style:{color:'#7a8a68',weight:.9,opacity:.55}}).addTo(map);
+  if(contours?.swale && document.getElementById('tog-swales').checked)
+    lSwales=L.geoJSON(contours.swale,{style:{color:'#4a9db7',weight:2,opacity:.82,dashArray:'5 3'}}).addTo(map);
+  if(document.getElementById('tog-keyline').checked){
+    if(contours?.keyline)
+      lKeyline=L.geoJSON(contours.keyline,{style:{color:'#f1c40f',weight:3,opacity:.92}}).addTo(map);
+    if(contours?.cultivation)
+      lCultivation=L.geoJSON(contours.cultivation,{style:{color:'#8fbc5a',weight:1.5,opacity:.65,dashArray:'7 4'}}).addTo(map);
+    if(keypoints){
+      L.geoJSON(keypoints,{
+        pointToLayer:(f,ll)=>{
+          const m=L.marker(ll,{icon:keypointIcon(f.properties.elevation)});
+          m.bindPopup(`<div style="font-family:'Segoe UI',sans-serif;font-size:13px"><strong style="color:#ff9800">Keypoint</strong><hr style="border-color:#333;margin:4px 0"/><b>Elevation:</b> ${f.properties.elevation} m<br><small style="color:#888">Valley floor inflection — optimal dam / pond location<br>Keyline traces the contour at this elevation</small></div>`);
+          lKeypoints.push(m);
+          return m;
+        }
+      }).addTo(map);
+    }
+  }
+
+  // Streams
+  if(streams && document.getElementById('tog-streams').checked)
+    lStreams=L.geoJSON(streams,{style:{color:'#5a9db7',weight:1.5,opacity:.65}}).addTo(map);
+
+  // Dam catchments
+  if(catchments?.features.length && document.getElementById('tog-dams').checked)
+    lCatch=L.geoJSON(catchments,{style:f=>({color:COLORS[f.properties.rank-1],weight:1.5,fillOpacity:.12,dashArray:'5 4'})}).addTo(map);
+
+  // Access route
+  if(route && document.getElementById('tog-route').checked)
+    lRoute=L.geoJSON(route,{style:{color:'#f1c40f',weight:2.5,opacity:.82,dashArray:'8 5'}}).addTo(map);
+
+  // Site cards + pins
+  const list=document.getElementById('site-list'); list.innerHTML='';
+
+  if(sites.length===0){
+    list.innerHTML='<div style="padding:12px;font-size:.75rem;color:#666">No dam candidates found in this AOI.<br><br>Contour / swale / keyline layers still shown.</div>';
+  } else {
+    sites.forEach((s,i)=>{
+      const rank=i+1;
+      const mk=L.marker([s.lat,s.lng],{icon:siteIcon(rank)}).addTo(map).bindPopup(sitePopup(s,rank));
+      lMarkers.push(mk);
+      const card=document.createElement('div'); card.className='site-card';
+      card.innerHTML=`
+        <div class="sc-title">
+          <span class="sc-rank" style="background:${COLORS[i]}">${rank}</span>
+          <span class="sc-name">Dam Site ${rank}</span>
+          <span class="sc-score">${s.score.toFixed(2)}</span>
+        </div>
+        <div class="sc-metrics">
+          <div class="sc-m">Catchment: <span>${s.catchmentHa} ha</span></div>
+          <div class="sc-m">Yield/yr: <span>${fmt(s.yield_m3)} m³</span></div>
+          <div class="sc-m">Storage: <span>${fmt(s.storage_m3)} m³</span></div>
+          <div class="sc-m">Wall: <span>${s.wallLength} m</span></div>
+          <div class="sc-m">Earthworks: <span>${fmt(s.earth_m3)} m³</span></div>
+          <div class="sc-m">Elevation: <span>${s.elevation} m</span></div>
+        </div>
+        ${s.permitFlag?'<div class="sc-warn">⚠ May exceed 50 ac-ft — check permit thresholds</div>':''}`;
+      card.addEventListener('click',()=>{
+        map.flyTo([s.lat,s.lng],16); mk.openPopup();
+        document.querySelectorAll('.site-card').forEach(c=>c.classList.remove('selected'));
+        card.classList.add('selected');
+      });
+      list.appendChild(card);
+    });
+  }
+
+  // Keypoint info card
+  if(keypoints?.features.length){
+    const kpElev=keypoints.features[0].properties.elevation;
+    const kcard=document.createElement('div');
+    kcard.style.cssText='padding:8px 12px;border-top:2px solid #3a5a3a;background:#162616;font-size:.7rem;color:#aaa';
+    kcard.innerHTML=`<div style="color:#ff9800;font-weight:600;margin-bottom:4px">◆ Keypoint detected — ${kpElev} m</div>
+      <div>Keyline (yellow) traces the contour at this elevation. Place your primary pond or dam here for maximum gravity-fed irrigation range. Cultivation parallels (green dashed) spread water toward ridges.</div>`;
+    list.appendChild(kcard);
+  }
+
+  // Swale info card
+  if(contours?.swale){
+    const scard=document.createElement('div');
+    scard.style.cssText='padding:8px 12px;border-top:1px solid #2a3a2a;background:#162616;font-size:.7rem;color:#aaa';
+    scard.innerHTML=`<div style="color:#4a9db7;font-weight:600;margin-bottom:4px">~ Swale zones (blue dashed)</div>
+      <div>Contour lines where slope ≤${document.getElementById('swale-slope').value}% and catchment is in the swale-suitable range. Dig on-contour to intercept and infiltrate runoff. Space 3–10m vertically.</div>`;
+    list.appendChild(scard);
+  }
+
+  // Meta note
+  if(meta){
+    const mcard=document.createElement('div');
+    mcard.style.cssText='padding:6px 12px;font-size:.64rem;color:#444;background:#111';
+    mcard.textContent=`Stream threshold: ${meta.threshHa.toFixed(1)} ha · Min catchment: ${meta.minHa.toFixed(1)} ha · Wall H: ${meta.wallH}m`;
+    list.appendChild(mcard);
+  }
+
+  document.getElementById('sidebar').classList.add('visible');
+  document.getElementById('sb-sub').textContent=`${sites.length} dam site${sites.length!==1?'s':''} · keyline + swales mapped`;
+  if(drawn.getLayers().length) map.fitBounds(drawn.getBounds(),{padding:[40,40]});
+}
+
+function sitePopup(s,rank){
+  const w=s.permitFlag?'<br><span style="color:#c8781a">⚠ Est. storage may exceed 50 ac-ft permit threshold</span>':'';
+  return `<div style="font-family:'Segoe UI',sans-serif;font-size:13px;min-width:185px">
+    <strong style="color:#8fbc5a">Dam Site #${rank}</strong> &nbsp; Score: <strong>${s.score.toFixed(2)}</strong>
+    <hr style="border-color:#333;margin:5px 0"/>
+    <table style="width:100%;font-size:12px;border-collapse:collapse">
+      <tr><td>Catchment</td><td style="text-align:right">${s.catchmentHa} ha</td></tr>
+      <tr><td>Annual yield</td><td style="text-align:right">${fmt(s.yield_m3)} m³/yr</td></tr>
+      <tr><td>Est. storage</td><td style="text-align:right">${fmt(s.storage_m3)} m³</td></tr>
+      <tr><td>Wall length</td><td style="text-align:right">${s.wallLength} m</td></tr>
+      <tr><td>Earthworks</td><td style="text-align:right">${fmt(s.earth_m3)} m³</td></tr>
+      <tr><td>Elevation</td><td style="text-align:right">${s.elevation} m</td></tr>
+      <tr><td>Gradient</td><td style="text-align:right">${(s.gradient*100).toFixed(1)}%</td></tr>
+    </table>
+    <small style="color:#777">⚠ Soil: estimated default · verify on site</small>${w}</div>`;
+}
+
+function fmt(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'k';return Math.round(n)+'';}
+
+// ── Analyze ───────────────────────────────────────────────────────
+document.getElementById('btn-analyze').addEventListener('click',runAnalysis);
+
+async function runAnalysis(){
+  const layers=drawn.getLayers(); if(!layers.length){showInfo('Draw a property boundary first.');return;}
+  const aoi=layers[0].toGeoJSON(), bounds=layers[0].getBounds();
+  const aoiAreaHa=turf.area(aoi)/1e4;
+  if(aoiAreaHa/0.404686>500&&!confirm(`AOI is ~${Math.round(aoiAreaHa/0.404686)} acres. Analysis may be slow. Continue?`)) return;
+
+  const lat0=bounds.getSouth(),lat1=bounds.getNorth(),lng0=bounds.getWest(),lng1=bounds.getEast();
+  const midLat=(lat0+lat1)/2, dLat=0.5/111.32, dLng=0.5/(111.32*Math.cos(midLat*Math.PI/180));
+  const[west,south,east,north]=[lng0-dLng,lat0-dLat,lng1+dLng,lat1+dLat];
+  const spanKm=Math.max((east-west)*111.32*Math.cos(midLat*Math.PI/180),(north-south)*111.32);
+  const demPx=spanKm<1.5?1024:spanKm<3?768:spanKm<6?512:384;
+
+  showInfo('Fetching DEM from USGS 3DEP…');
+  document.getElementById('btn-analyze').disabled=true;
+  clearResults();
+  // Re-add the AOI polygon to drawn after clear
+  // (clearResults doesn't clear drawn, just results)
+
+  // Web Mercator helpers (EPSG:102100 / 3857)
+  const R_EARTH=6378137;
+  const toWM=(lng,lat)=>[lng*Math.PI/180*R_EARTH, Math.log(Math.tan(Math.PI/4+lat*Math.PI/360))*R_EARTH];
+  const fromWM=(x,y)=>[x/R_EARTH*180/Math.PI, (2*Math.atan(Math.exp(y/R_EARTH))-Math.PI/2)*180/Math.PI];
+
+  try{
+    const [wmW,wmS]=toWM(west,south), [wmE,wmN]=toWM(east,north);
+    const demUrl=`https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage`+
+      `?bbox=${wmW},${wmS},${wmE},${wmN}&bboxSR=102100&imageSR=102100`+
+      `&size=${demPx},${demPx}&format=tiff&pixelType=F32&f=image`;
+    const resp=await fetch(demUrl); if(!resp.ok) throw new Error(`3DEP HTTP ${resp.status}`);
+    const buf=await resp.arrayBuffer();
+    const magic=new Uint8Array(buf,0,4);
+    if(magic[0]===123||magic[0]===60) throw new Error(`3DEP returned non-TIFF (${buf.byteLength} bytes — ${String.fromCharCode(...magic.slice(0,4))})`);
+
+    showInfo('Decoding elevation data…');
+    const tiff=await GeoTIFF.fromArrayBuffer(buf), image=await tiff.getImage();
+    const rasts=await image.readRasters(), elevation=new Float32Array(rasts[0]);
+    const W=image.getWidth(),H=image.getHeight();
+
+    // Convert Web Mercator bbox → WGS84 for the worker pipeline
+    const ib=image.getBoundingBox(); // [xmin,ymin,xmax,ymax] in WM
+    const [bboxW,bboxS]=fromWM(ib[0],ib[1]), [bboxE,bboxN]=fromWM(ib[2],ib[3]);
+    const bbox=[bboxW,bboxS,bboxE,bboxN];
+
+    const csM=(ib[2]-ib[0])/W; // metres per pixel (Web Mercator, good enough at mid-lat)
+    document.getElementById('dem-res-note').textContent=`DEM: ~${csM.toFixed(1)} m/px · USGS 3DEP`;
+
+    showInfo('Running hydrology pipeline…');
+    if(activeWorker) activeWorker.terminate();
+    activeWorker=new Worker(workerUrl);
+
+    const threshOverride=+document.getElementById('thresh-ha').value;
+    const contourInterval=+document.getElementById('contour-interval').value;
+    const swaleSlopePct=+document.getElementById('swale-slope').value;
+    const wallH=+document.getElementById('wall-h').value;
+    const precipMM=+document.getElementById('precip-input').value;
+
+    activeWorker.onmessage=e=>{
+      const{type,msg,sites,streams,catchments,route,contours,keypoints,meta}=e.data;
+      if(type==='progress'){showInfo(msg);return;}
+      document.getElementById('btn-analyze').disabled=false;
+      activeWorker=null;
+      const siteLabel=sites?.length?`Found ${sites.length} dam candidate${sites.length!==1?'s':''}`:'No dam sites — contour & keyline layers ready.';
+      showInfo(siteLabel); setTimeout(hideInfo,4000);
+      renderResults({sites:sites||[],streams,catchments,route,contours,keypoints,meta});
+    };
+    activeWorker.onerror=err=>{showInfo('Pipeline error: '+err.message);document.getElementById('btn-analyze').disabled=false;};
+
+    const elevCopy=new Float32Array(elevation);
+    activeWorker.postMessage({elevation:elevCopy,W,H,bbox,weights:weights(),precipMM,wallH,threshHaOverride:threshOverride,contourInterval,swaleSlopePct,aoiAreaHa},{transfer:[elevCopy.buffer]});
+
+  }catch(err){showInfo('Error: '+err.message);document.getElementById('btn-analyze').disabled=false;}
+}
+
+// ── Export ────────────────────────────────────────────────────────
+document.getElementById('btn-geojson').addEventListener('click',()=>{
+  if(!lastData) return;
+  const{sites,streams,catchments,route,contours,keypoints}=lastData;
+  const fc={type:'FeatureCollection',features:[
+    ...( sites||[]).map((s,i)=>({type:'Feature',geometry:{type:'Point',coordinates:[s.lng,s.lat]},properties:{rank:i+1,type:'dam_site',score:s.score,catchment_ha:s.catchmentHa,yield_m3_yr:s.yield_m3,storage_m3:s.storage_m3,wall_length_m:s.wallLength,earthworks_m3:s.earth_m3,elevation_m:s.elevation}})),
+    ...(streams?[streams]:[]),
+    ...(route?[route]:[]),
+    ...(catchments?catchments.features:[]),
+    ...(contours?.keyline?[contours.keyline]:[]),
+    ...(keypoints?keypoints.features:[]),
+  ]};
+  dl('bullringrd-keyline.geojson',JSON.stringify(fc,null,2),'application/geo+json');
+});
+
+document.getElementById('btn-kml').addEventListener('click',()=>{
+  if(!lastData||!lastData.sites?.length) return;
+  const marks=lastData.sites.map((s,i)=>`  <Placemark><name>Dam Site ${i+1} (score ${s.score})</name><description>Catchment ${s.catchmentHa}ha | Yield ${fmt(s.yield_m3)}m³/yr | Storage ${fmt(s.storage_m3)}m³ | Wall ${s.wallLength}m</description><Point><coordinates>${s.lng},${s.lat},${s.elevation}</coordinates></Point></Placemark>`).join('');
+  const kpMarks=(lastData.keypoints?.features||[]).map(f=>`  <Placemark><name>Keypoint ${f.properties.elevation}m</name><Point><coordinates>${f.geometry.coordinates[0]},${f.geometry.coordinates[1]},${f.properties.elevation}</coordinates></Point></Placemark>`).join('');
+  dl('bullringrd-keyline.kml',`<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Bull Ring Rd Keyline Design</name>${marks}${kpMarks}</Document></kml>`,'application/vnd.google-earth.kml+xml');
+});
+
+document.getElementById('btn-pdf').addEventListener('click',async()=>{
+  if(!lastData) return;
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const PW=210,M=16;
+  doc.setFillColor(30,45,30); doc.rect(0,0,PW,38,'F');
+  doc.setTextColor(143,188,90); doc.setFontSize(17); doc.text('Keyline Water Design Report',M,16);
+  doc.setFontSize(10); doc.text('502 Bull Ring Rd · Denmark, Maine · ~54 acres',M,24);
+  doc.setFontSize(8.5); doc.setTextColor(150,150,150);
+  doc.text(`Generated ${new Date().toLocaleDateString()}  ·  ${document.getElementById('dem-res-note').textContent}`,M,32);
+
+  let y=47;
+  // Keypoint section
+  if(lastData.keypoints?.features.length){
+    const kp=lastData.keypoints.features[0];
+    doc.setFillColor(40,30,10); doc.rect(0,y-4,PW,12,'F');
+    doc.setTextColor(255,152,0); doc.setFontSize(11); doc.text(`Keypoint: ${kp.properties.elevation} m elevation`,M,y+4); y+=16;
+    doc.setFontSize(9); doc.setTextColor(80,80,80);
+    doc.text('The keypoint marks the valley floor inflection — transition from concave (erosive) to convex (depositional).',M,y); y+=6;
+    doc.text('The keyline contour at this elevation is the optimal datum for Yeomans cultivation and dam placement.',M,y); y+=10;
+  }
+
+  // Dam sites
+  const top3=(lastData.sites||[]).slice(0,3);
+  if(top3.length){
+    doc.setFillColor(30,45,30); doc.rect(0,y-4,PW,10,'F');
+    doc.setTextColor(143,188,90); doc.setFontSize(11); doc.text(`${top3.length} Dam Candidate Site${top3.length!==1?'s':''}  (top scored)`,M,y+2); y+=14;
+    top3.forEach((s,i)=>{
+      doc.setFontSize(10); doc.setTextColor(20,20,20); doc.text(`Site ${i+1}  — Score ${s.score.toFixed(2)}`,M,y); y+=6;
+      doc.setFontSize(8.5); doc.setTextColor(80,80,80);
+      const rows=[['Catchment',`${s.catchmentHa} ha`],['Yield',`${fmt(s.yield_m3)} m³/yr`],['Storage',`${fmt(s.storage_m3)} m³`],['Wall',`${s.wallLength} m`],['Earthworks',`${fmt(s.earth_m3)} m³`]];
+      rows.forEach(([l,v])=>{ doc.text(l,M,y); doc.text(v,100,y); y+=5; });
+      y+=3;
+    });
+  } else {
+    doc.setFontSize(9); doc.setTextColor(100,100,100); doc.text('No dam sites identified in this AOI. Adjust wall height or stream threshold in Settings.',M,y); y+=8;
+  }
+
+  y+=4; doc.setDrawColor(143,188,90); doc.line(M,y,PW-M,y); y+=6;
+  doc.setFontSize(8); doc.setTextColor(100,100,100);
+  doc.text('Swale zones shown on map where slope ≤5% and flow accumulation is in the catchment-suitable range.',M,y); y+=5;
+  doc.text('Cultivation parallels (green dashed) are contours near the keyline elevation — plow these lines to spread water toward ridges.',M,y); y+=5;
+  doc.text('Boundary is approximate — verify against Oxford County, ME assessor records.',M,y); y+=5;
+  doc.text('All outputs are model estimates. Site verification, soil testing, and licensed engineering required before construction.',M,y);
+  doc.save('bullringrd-water-design.pdf');
+});
+
+function dl(name,content,mime){const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([content],{type:mime})),download:name});a.click();}
+function showInfo(msg){const b=document.getElementById('info-bar');b.textContent=msg;b.style.display='block';}
+function hideInfo(){document.getElementById('info-bar').style.display='none';}
+
+// ── Pre-load property boundary ────────────────────────────────────
+// Coordinates drawn by owner on 2026-04-20
+const PROPERTY_LATLNGS=[
+  [43.93915,-70.79592],
+  [43.938655,-70.789461],
+  [43.937635,-70.789418],
+  [43.937202,-70.787358],
+  [43.936553,-70.78753],
+  [43.93629,-70.786736],
+  [43.93581,-70.786951],
+  [43.937511,-70.793087],
+  [43.937496,-70.795856],
+];
+
+function preloadProperty(){
+  const poly=L.polygon(PROPERTY_LATLNGS,{color:'#8fbc5a',weight:2,fillOpacity:.06,dashArray:'6 4'});
+  drawn.addLayer(poly);
+  document.getElementById('btn-analyze').disabled=false;
+  document.getElementById('btn-clear').disabled=false;
+  map.fitBounds(poly.getBounds(),{padding:[60,60]});
+}
+preloadProperty();
+</script>
+</body>
+</html>
