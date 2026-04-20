@@ -535,9 +535,20 @@ function findKeypoint(path,filled,W,H,csM){
   return{idx:kpIdx, x:kx, y:ky, elevation:filled[kpIdx]};
 }
 
+// ── Point-in-polygon (ray casting) ────────────────────────────
+function pointInPoly(lng,lat,poly){
+  // poly: array of [lng,lat] pairs (GeoJSON coordinate order)
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const xi=poly[i][0],yi=poly[i][1],xj=poly[j][0],yj=poly[j][1];
+    if(((yi>lat)!==(yj>lat))&&(lng<(xj-xi)*(lat-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+
 // ── Main pipeline ─────────────────────────────────────────────
 self.onmessage=function(e){
-  const{elevation,W,H,bbox,weights,precipMM,wallH,threshHaOverride,contourInterval,swaleSlopePct,aoiAreaHa}=e.data;
+  const{elevation,W,H,bbox,weights,precipMM,wallH,threshHaOverride,contourInterval,swaleSlopePct,aoiAreaHa,aoiPoly}=e.data;
   const WALL_H=wallH||3;
 
   const csM=csMetres(bbox,W,H), cellArea=csM*csM, precipM=precipMM/1000;
@@ -668,19 +679,20 @@ self.onmessage=function(e){
       gradient:Math.round(grad*1000)/1000,elevNorm,permitFlag:storage_m3>61674});
   }
 
-  self.postMessage({type:'progress',msg:\`Scoring \${cands.length} dam candidates…\`});
+  const filteredCands=aoiPoly&&aoiPoly.length?cands.filter(c=>pointInPoly(c.lng,c.lat,aoiPoly)):cands;
+  self.postMessage({type:'progress',msg:\`Scoring \${filteredCands.length} dam candidates within AOI…\`});
   const topSites=[];
-  if(cands.length){
+  if(filteredCands.length){
     const{w1,w2,w3,w4}=weights, SOIL=0.7;
     let mxYE=1e-9,mxSE=1e-9;
-    for(const c of cands){ const ye=c.yield_m3/(c.earth_m3||1),se=c.storage_m3/(c.earth_m3||1); if(ye>mxYE)mxYE=ye; if(se>mxSE)mxSE=se; }
+    for(const c of filteredCands){ const ye=c.yield_m3/(c.earth_m3||1),se=c.storage_m3/(c.earth_m3||1); if(ye>mxYE)mxYE=ye; if(se>mxSE)mxSE=se; }
     let mxEN=1e-9,mnEN=1;
-    for(const c of cands){ if(c.elevNorm>mxEN)mxEN=c.elevNorm; if(c.elevNorm<mnEN)mnEN=c.elevNorm; }
+    for(const c of filteredCands){ if(c.elevNorm>mxEN)mxEN=c.elevNorm; if(c.elevNorm<mnEN)mnEN=c.elevNorm; }
     const enR=(mxEN-mnEN)||1;
-    for(const c of cands){ const ye=c.yield_m3/(c.earth_m3||1)/mxYE,se=c.storage_m3/(c.earth_m3||1)/mxSE,en=(c.elevNorm-mnEN)/enR; c.score=Math.round((w1*ye+w2*se+w3*SOIL+w4*en)*100)/100; }
-    cands.sort((a,b)=>b.score-a.score);
+    for(const c of filteredCands){ const ye=c.yield_m3/(c.earth_m3||1)/mxYE,se=c.storage_m3/(c.earth_m3||1)/mxSE,en=(c.elevNorm-mnEN)/enR; c.score=Math.round((w1*ye+w2*se+w3*SOIL+w4*en)*100)/100; }
+    filteredCands.sort((a,b)=>b.score-a.score);
     const clD=50/csM;
-    for(const c of cands){
+    for(const c of filteredCands){
       if(!topSites.some(s=>{ const dx=c.x-s.x,dy=c.y-s.y; return Math.sqrt(dx*dx+dy*dy)<clD; })) topSites.push(c);
       if(topSites.length>=10) break;
     }
@@ -1130,7 +1142,8 @@ async function runAnalysis(){
     activeWorker.onerror=err=>{showInfo('Pipeline error: '+err.message);document.getElementById('btn-analyze').disabled=false;};
 
     const elevCopy=new Float32Array(elevation);
-    activeWorker.postMessage({elevation:elevCopy,W,H,bbox,weights:weights(),precipMM,wallH,threshHaOverride:threshOverride,contourInterval,swaleSlopePct,aoiAreaHa},{transfer:[elevCopy.buffer]});
+    const aoiPoly=aoi.geometry.coordinates[0]; // [[lng,lat],…]
+    activeWorker.postMessage({elevation:elevCopy,W,H,bbox,weights:weights(),precipMM,wallH,threshHaOverride:threshOverride,contourInterval,swaleSlopePct,aoiAreaHa,aoiPoly},{transfer:[elevCopy.buffer]});
 
   }catch(err){showInfo('Error: '+err.message);document.getElementById('btn-analyze').disabled=false;}
 }
