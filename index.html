@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TobyVision — Agroforestry Slope Map</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: #eee; height: 100vh; display: flex; flex-direction: column; }
+
+    #header {
+      background: #1e2d1e; padding: 10px 16px;
+      display: flex; align-items: center; gap: 16px;
+      border-bottom: 2px solid #3a5a3a; flex-wrap: wrap;
+    }
+    #header h1 { font-size: 1rem; color: #8fbc5a; letter-spacing: 0.05em; font-weight: 600; white-space: nowrap; }
+    #search-box { display: flex; gap: 8px; flex: 1; max-width: 400px; }
+    #search-input {
+      flex: 1; padding: 6px 10px; border-radius: 6px;
+      border: 1px solid #3a5a3a; background: #111; color: #eee; font-size: 0.85rem;
+    }
+    #search-btn {
+      padding: 6px 12px; background: #4a7a2a; color: #fff;
+      border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+    }
+    #search-btn:hover { background: #5a9a3a; }
+    #controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .toggle-label { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #aaa; cursor: pointer; }
+    .toggle-label input { cursor: pointer; accent-color: #8fbc5a; }
+    #base-select {
+      padding: 4px 8px; background: #111; color: #ccc;
+      border: 1px solid #3a5a3a; border-radius: 6px; font-size: 0.8rem; cursor: pointer;
+    }
+
+    #map { flex: 1; }
+
+    #legend {
+      position: absolute; bottom: 30px; left: 10px;
+      background: rgba(20,35,20,0.93); border: 1px solid #3a5a3a;
+      border-radius: 8px; padding: 10px 14px; z-index: 1000;
+      font-size: 0.75rem; color: #ccc; min-width: 220px;
+    }
+    #legend h3 { color: #8fbc5a; margin-bottom: 8px; font-size: 0.8rem; }
+    .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .legend-swatch { width: 18px; height: 18px; border-radius: 3px; flex-shrink: 0; }
+
+    #info-bar {
+      position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
+      background: rgba(20,35,20,0.9); border: 1px solid #3a5a3a;
+      border-radius: 6px; padding: 6px 14px; z-index: 1000;
+      font-size: 0.78rem; color: #8fbc5a; pointer-events: none; display: none; white-space: nowrap;
+    }
+
+    .zoom-slider-control {
+      background: rgba(20,35,20,0.93); border: 1px solid #3a5a3a;
+      border-radius: 8px; padding: 8px 6px;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      user-select: none;
+    }
+    .zoom-slider-control span {
+      font-size: 0.7rem; color: #8fbc5a; font-weight: 600; line-height: 1;
+    }
+    .zoom-slider-control input[type=range] {
+      writing-mode: vertical-lr;
+      direction: rtl;
+      width: 6px;
+      height: 140px;
+      cursor: pointer;
+      accent-color: #8fbc5a;
+      background: transparent;
+    }
+    #zoom-value {
+      font-size: 0.7rem; color: #aaa; min-width: 16px; text-align: center;
+    }
+    .zoom-btn {
+      background: #2a4a2a; color: #8fbc5a; border: 1px solid #3a5a3a;
+      border-radius: 4px; width: 24px; height: 24px; cursor: pointer;
+      font-size: 1rem; line-height: 1; padding: 0; font-weight: 600;
+    }
+    .zoom-btn:hover { background: #3a6a3a; }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <h1>🦅 TobyVision</h1>
+  <div id="search-box">
+    <input id="search-input" type="text" placeholder="Enter address or lat,lng..."/>
+    <button id="search-btn">Go</button>
+  </div>
+  <div id="controls">
+    <select id="base-select">
+      <option value="osm">Street Map</option>
+      <option value="topo">Topo</option>
+      <option value="satellite">Satellite</option>
+    </select>
+    <label class="toggle-label"><input type="checkbox" id="toggle-slope" checked/> Slope Zones</label>
+    <label class="toggle-label"><input type="checkbox" id="toggle-hillshade" checked/> Hillshade</label>
+  </div>
+</div>
+
+<div id="map"></div>
+<div id="info-bar"></div>
+
+<div id="legend">
+  <h3>Slope Suitability</h3>
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:rgba(255,0,220,0.75)"></div>
+    <span>12–20% — Agroforestry sweet spot</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:rgba(80,0,160,0.85)"></div>
+    <span>&gt;20% — Manual labor terrain</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:transparent; border:1px dashed #444"></div>
+    <span style="color:#555">&lt;12% — no overlay</span>
+  </div>
+  <div style="margin-top:8px; padding-top:6px; border-top:1px solid #3a5a3a; color:#555; font-size:0.7rem;">
+    USGS 3DEP · computed on demand
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+
+// ── Map ───────────────────────────────────────────────────────────────────────
+const map = L.map('map', { center: [43.5, -72.5], zoom: 7, zoomControl: false });
+
+// ── Zoom slider control ───────────────────────────────────────────────────────
+const ZoomSlider = L.Control.extend({
+  options: { position: 'topleft' },
+  onAdd: function(m) {
+    const MIN = 1, MAX = 25;
+
+    const container = L.DomUtil.create('div', 'zoom-slider-control');
+    L.DomEvent.disableClickPropagation(container);
+    L.DomEvent.disableScrollPropagation(container);
+
+    const btnPlus = L.DomUtil.create('button', 'zoom-btn', container);
+    btnPlus.textContent = '+';
+
+    const slider = L.DomUtil.create('input', '', container);
+    slider.type  = 'range';
+    slider.min   = MIN;
+    slider.max   = MAX;
+    slider.step  = 1;
+    slider.value = m.getZoom();
+    slider.id    = 'zoom-slider';
+
+    const valLabel = L.DomUtil.create('span', '', container);
+    valLabel.id = 'zoom-value';
+    valLabel.textContent = m.getZoom();
+
+    const btnMinus = L.DomUtil.create('button', 'zoom-btn', container);
+    btnMinus.textContent = '−';
+
+    function setZoom(val) {
+      const z = Math.max(MIN, Math.min(MAX, val));
+      m.setZoom(z);
+      slider.value = z;
+      valLabel.textContent = z;
+    }
+
+    btnPlus.addEventListener('click',  () => setZoom(parseInt(slider.value) + 1));
+    btnMinus.addEventListener('click', () => setZoom(parseInt(slider.value) - 1));
+    slider.addEventListener('input',   () => setZoom(parseInt(slider.value)));
+
+    m.on('zoomend', () => {
+      slider.value = m.getZoom();
+      valLabel.textContent = m.getZoom();
+    });
+
+    return container;
+  }
+});
+new ZoomSlider().addTo(map);
+
+// ── Base layers ───────────────────────────────────────────────────────────────
+const baseLayers = {
+  osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors', maxZoom: 19
+  }),
+  topo: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenTopoMap contributors', maxZoom: 17
+  }),
+  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Esri World Imagery', maxZoom: 19
+  })
+};
+
+let currentBase = baseLayers.osm;
+currentBase.addTo(map);
+
+// ── Hillshade — Esri World Hillshade ─────────────────────────────────────────
+const hillshade = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
+  { opacity: 0.4, attribution: 'Esri World Hillshade', maxZoom: 16 }
+);
+hillshade.addTo(map);
+
+// ── Slope Zone Layer — ArcGIS ImageServer exportImage with renderingRule ──────
+//
+// Uses USGS 3DEP ImageServer REST API instead of WMS.
+// renderingRule chain: Slope → Remap (3 zones) → Colormap
+//
+// Slope thresholds in degrees (converted from %):
+//   <12%  = <6.84°   → no overlay (transparent)
+//   12-20% = 6.84-11.31° → electric teal (0, 235, 255)
+//   >20%  = >11.31°  → fuchsia (255, 0, 220)
+
+const RENDERING_RULE = JSON.stringify({
+  rasterFunction: 'Colormap',
+  rasterFunctionArguments: {
+    Colormap: [
+      [1, 255,   0, 220],   // fuchsia      — agroforestry 12-20%
+      [2,  80,   0, 160]    // deep purple  — steep >20%
+    ],
+    Raster: {
+      rasterFunction: 'Remap',
+      rasterFunctionArguments: {
+        InputRanges:  [6.84, 11.31,  11.31, 90],
+        OutputValues: [1, 2],
+        AllowUnmatched: false,
+        Raster: {
+          rasterFunction: 'Slope',
+          rasterFunctionArguments: {
+            ZFactor: 1,
+            OutputMeasurement: 'DEGREE'
+          }
+        }
+      }
+    }
+  }
+});
+
+const SlopeZoneLayer = L.TileLayer.extend({
+  getTileUrl: function (coords) {
+    const bounds = this._tileCoordsToBounds(coords);
+    const sw     = L.CRS.EPSG3857.project(bounds.getSouthWest());
+    const ne     = L.CRS.EPSG3857.project(bounds.getNorthEast());
+    const size   = this.getTileSize();
+
+    return (
+      'https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage' +
+      '?bbox='    + sw.x + ',' + sw.y + ',' + ne.x + ',' + ne.y +
+      '&bboxSR=102100&imageSR=102100' +
+      '&size='    + size.x + ',' + size.y +
+      '&format=png32&transparent=true&f=image' +
+      '&renderingRule=' + encodeURIComponent(RENDERING_RULE)
+    );
+  }
+});
+
+const slopeLayer = new SlopeZoneLayer('', {
+  opacity: 0.65,
+  attribution: 'USGS 3DEP',
+  maxZoom: 16,
+  tileSize: 256
+});
+slopeLayer.addTo(map);
+
+// ── Toggle handlers ───────────────────────────────────────────────────────────
+document.getElementById('base-select').addEventListener('change', e => {
+  map.removeLayer(currentBase);
+  currentBase = baseLayers[e.target.value];
+  currentBase.addTo(map);
+  [hillshade, slopeLayer].forEach(layer => {
+    if (map.hasLayer(layer)) { map.removeLayer(layer); layer.addTo(map); }
+  });
+});
+
+document.getElementById('toggle-slope').addEventListener('change', e => {
+  e.target.checked ? slopeLayer.addTo(map) : map.removeLayer(slopeLayer);
+});
+
+document.getElementById('toggle-hillshade').addEventListener('change', e => {
+  e.target.checked ? hillshade.addTo(map) : map.removeLayer(hillshade);
+});
+
+// ── Search via Nominatim ──────────────────────────────────────────────────────
+document.getElementById('search-btn').addEventListener('click', doSearch);
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+function doSearch() {
+  const val = document.getElementById('search-input').value.trim();
+  if (!val) return;
+  const ll = val.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
+  if (ll) { flyTo(parseFloat(ll[1]), parseFloat(ll[2]), val); return; }
+  showInfo('Searching…');
+  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=1&countrycodes=us`)
+    .then(r => r.json())
+    .then(results => {
+      if (!results.length) { showInfo('Location not found'); setTimeout(hideInfo, 3000); return; }
+      flyTo(parseFloat(results[0].lat), parseFloat(results[0].lon), results[0].display_name);
+    })
+    .catch(() => { showInfo('Search failed'); setTimeout(hideInfo, 3000); });
+}
+
+function flyTo(lat, lng, label) {
+  map.flyTo([lat, lng], 14, { duration: 1.5 });
+  L.marker([lat, lng]).addTo(map)
+    .bindPopup(`<b>${label}</b><br><small>${lat.toFixed(5)}, ${lng.toFixed(5)}</small>`)
+    .openPopup();
+  hideInfo();
+}
+
+function showInfo(msg) { const b = document.getElementById('info-bar'); b.textContent = msg; b.style.display = 'block'; }
+function hideInfo()    { document.getElementById('info-bar').style.display = 'none'; }
+
+// ── Initial view ──────────────────────────────────────────────────────────────
+map.fitBounds([[38.9, -80.5], [47.5, -66.9]]);
+
+</script>
+</body>
+</html>
