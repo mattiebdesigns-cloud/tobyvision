@@ -160,6 +160,7 @@
   <label class="toggle-label"><input type="checkbox" id="tog-streams" checked/> Streams</label>
   <label class="toggle-label"><input type="checkbox" id="tog-dams" checked/> Dams</label>
   <label class="toggle-label"><input type="checkbox" id="tog-route" checked/> Route</label>
+  <label class="toggle-label"><input type="checkbox" id="tog-nhd"/> NHD</label>
   <button class="hdr-btn" id="btn-settings">⚙ Settings</button>
 </div>
 
@@ -191,7 +192,8 @@
   <div class="lg-item"><div class="lg-line" style="background:#f1c40f;height:3px"></div><span>Keyline</span></div>
   <div class="lg-item"><div class="lg-line" style="background:#8fbc5a;height:1.5px;border-top:1.5px dashed #8fbc5a;background:transparent"></div><span>Cultivation parallels</span></div>
   <div class="lg-item"><div class="lg-dot" style="background:#ff9800;transform:rotate(45deg);border-radius:2px"></div><span>Keypoint (valley inflection)</span></div>
-  <div class="lg-item"><div class="lg-line" style="background:#5a9db7;height:1.5px"></div><span>Streams</span></div>
+  <div class="lg-item"><div class="lg-line" style="background:#5a9db7;height:1.5px"></div><span>Computed streams</span></div>
+  <div class="lg-item"><div class="lg-line" style="background:#1565c0;height:2px"></div><span>NHD mapped streams (USGS)</span></div>
   <div class="lg-item"><div class="lg-dot" style="background:#f1c40f"></div><span>Dam site #1 (top score)</span></div>
   <div class="lg-item"><div class="lg-dot" style="background:#8bc34a"></div><span>Dam sites #2–3</span></div>
   <div class="lg-item"><div class="lg-dot" style="background:#4a9db7"></div><span>Dam sites #4–7</span></div>
@@ -763,6 +765,33 @@ document.getElementById('base-select').addEventListener('change',e=>{
   if(map.hasLayer(hillshade)){map.removeLayer(hillshade);hillshade.addTo(map);}
 });
 document.getElementById('tog-hillshade').addEventListener('change',e=>e.target.checked?hillshade.addTo(map):map.removeLayer(hillshade));
+
+// ── NHD (National Hydrography Dataset) WMS ───────────────────────
+// Flowlines + waterbodies from USGS at 1:24,000 scale
+// Used both to inform AOI drawing and to cross-check computed streams
+const nhdFlowlines = L.tileLayer.wms(
+  'https://hydro.nationalmap.gov/arcgis/services/nhd/MapServer/WMSServer',
+  { layers:'6', format:'image/png', transparent:true, opacity:.75,
+    attribution:'USGS NHD', maxZoom:19,
+    // Layer 6 = NHDFlowline (perennial + intermittent streams)
+  }
+);
+const nhdWaterbodies = L.tileLayer.wms(
+  'https://hydro.nationalmap.gov/arcgis/services/nhd/MapServer/WMSServer',
+  { layers:'8', format:'image/png', transparent:true, opacity:.65,
+    attribution:'USGS NHD', maxZoom:19,
+    // Layer 8 = NHDWaterbody (ponds, lakes)
+  }
+);
+document.getElementById('tog-nhd').addEventListener('change',e=>{
+  if(e.target.checked){
+    nhdFlowlines.addTo(map); nhdWaterbodies.addTo(map);
+    showInfo('NHD: USGS-mapped streams (blue) loaded — compare with computed streams');
+    setTimeout(hideInfo,4000);
+  } else {
+    map.removeLayer(nhdFlowlines); map.removeLayer(nhdWaterbodies);
+  }
+});
 
 // ── Draw ─────────────────────────────────────────────────────────
 const drawn=new L.FeatureGroup().addTo(map);
